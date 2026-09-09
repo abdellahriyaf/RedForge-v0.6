@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Core brand -->
+    <color name="forge_red">#E4141B</color>
+    <color name="forge_red_dark">#A50E13</color>
+    <color name="forge_red_bright">#FF3B30</color>
+    <color name="forge_black">#0B0B0D</color>
+    <color name="forge_charcoal">#17171A</color>
+    <color name="forge_surface">#1F1F23</color>
+    <color name="forge_surface_high">#2A2A2F</color>
+    <color name="forge_ash">#8A8A90</color>
+    <color name="forge_white">#F5F5F7</color>
+    <color name="forge_gold">#FFB020</color>
+    <color name="forge_green">#3DDC84</color>
+</resources>

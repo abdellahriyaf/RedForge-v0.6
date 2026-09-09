@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  RedForge mark: a barbell forming the crossbar of a forged "R", with a
+  flame accent at the plate to nod at "forging" progress. Kept inside the
+  66dp adaptive-icon safe zone (centered in the 108dp canvas).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Barbell bar -->
+    <path
+        android:fillColor="#F5F5F7"
+        android:pathData="M30,50 h48 v8 h-48 z" />
+
+    <!-- Left plates -->
+    <path
+        android:fillColor="#E4141B"
+        android:pathData="M22,38 h6 v28 h-6 z" />
+    <path
+        android:fillColor="#E4141B"
+        android:pathData="M14,44 h6 v16 h-6 z" />
+
+    <!-- Right plates -->
+    <path
+        android:fillColor="#E4141B"
+        android:pathData="M80,38 h6 v28 h-6 z" />
+    <path
+        android:fillColor="#E4141B"
+        android:pathData="M88,44 h6 v16 h-6 z" />
+
+    <!-- Flame accent above the bar, forging spark -->
+    <path
+        android:fillColor="#FFB020"
+        android:pathData="M54,18 C58,24 61,28 58,34 C57,36 54,37 52,35.5 C53.5,33 52.5,31 51,30 C49,33.5 49.5,37 52,39.5 C47,38.5 44.5,34 46,29.5 C47,26.5 50,25 50.5,22 C51,25 53,24.5 54,18 Z" />
+</vector>

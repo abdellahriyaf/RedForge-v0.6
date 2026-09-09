@@ -1,0 +1,77 @@
+package com.redforge.app.ui.theme
+
+import android.app.Activity
+import android.os.Build
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+
+/**
+ * RedForge is dark-first by design (an "energetic red and black" gym app),
+ * but we still expose a light variant for users who prefer it from Settings.
+ */
+private val ForgeDarkColorScheme = darkColorScheme(
+    primary = ForgeRed,
+    onPrimary = ForgeWhite,
+    primaryContainer = ForgeRedDark,
+    onPrimaryContainer = ForgeWhite,
+    secondary = ForgeGold,
+    onSecondary = ForgeBlack,
+    background = ForgeBlack,
+    onBackground = ForgeWhite,
+    surface = ForgeSurface,
+    onSurface = ForgeWhite,
+    surfaceVariant = ForgeSurfaceHigh,
+    onSurfaceVariant = ForgeAsh,
+    error = ForgeRedBright,
+    onError = ForgeWhite,
+    outline = ForgeSurfaceHigh
+)
+
+private val ForgeLightColorScheme = lightColorScheme(
+    primary = ForgeRed,
+    onPrimary = ForgeWhite,
+    primaryContainer = Color(0xFFFFDAD8),
+    secondary = ForgeGold,
+    background = Color(0xFFFAFAFA),
+    onBackground = ForgeBlack,
+    surface = Color(0xFFFFFFFF),
+    onSurface = ForgeBlack,
+    error = ForgeRedDark
+)
+
+@Composable
+fun RedForgeTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    forceDark: Boolean = true, // app default: always energetic dark mode unless user overrides in Settings
+    content: @Composable () -> Unit
+) {
+    val useDark = forceDark || darkTheme
+    val colorScheme = if (useDark) ForgeDarkColorScheme else ForgeLightColorScheme
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
+            window.statusBarColor = colorScheme.background.toArgb()
+            window.navigationBarColor = colorScheme.background.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !useDark
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !useDark
+            }
+        }
+    }
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = ForgeTypography,
+        content = content
+    )
+}

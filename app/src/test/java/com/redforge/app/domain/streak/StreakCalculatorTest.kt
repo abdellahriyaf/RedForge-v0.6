@@ -1,0 +1,57 @@
+package com.redforge.app.domain.streak
+
+import com.redforge.app.data.local.entities.WorkoutSession
+import org.junit.Assert.assertEquals
+import org.junit.Test
+import java.util.Calendar
+import java.util.TimeZone
+
+class StreakCalculatorTest {
+    private val zone = TimeZone.getTimeZone("UTC")
+
+    @Test
+    fun `multiple sessions on one day count once`() {
+        val mondayMorning = millis(2026, Calendar.SEPTEMBER, 7, 9)
+        val mondayEvening = millis(2026, Calendar.SEPTEMBER, 7, 18)
+        val tuesday = millis(2026, Calendar.SEPTEMBER, 8, 18)
+
+        val sessions = listOf(
+            completed(mondayMorning),
+            completed(mondayEvening),
+            completed(tuesday)
+        )
+
+        val result = StreakCalculator.compute(sessions, nowMillis = tuesday, timeZone = zone)
+        assertEquals(2, result.current)
+        assertEquals(2, result.longest)
+    }
+
+    @Test
+    fun `gap larger than maximum breaks current streak`() {
+        val monday = millis(2026, Calendar.SEPTEMBER, 7, 18)
+        val thursday = millis(2026, Calendar.SEPTEMBER, 10, 18)
+
+        val result = StreakCalculator.compute(
+            listOf(completed(monday), completed(thursday)),
+            maxGapDays = 2,
+            nowMillis = thursday,
+            timeZone = zone
+        )
+
+        assertEquals(1, result.current)
+        assertEquals(1, result.longest)
+    }
+
+    private fun completed(startedAt: Long) = WorkoutSession(
+        splitDayId = 1L,
+        splitDayNameSnapshot = "Training",
+        startedAt = startedAt,
+        completed = true
+    )
+
+    private fun millis(year: Int, month: Int, day: Int, hour: Int): Long =
+        Calendar.getInstance(zone).apply {
+            clear()
+            set(year, month, day, hour, 0, 0)
+        }.timeInMillis
+}

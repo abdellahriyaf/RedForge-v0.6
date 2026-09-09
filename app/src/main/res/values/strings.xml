@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RedForge v0.5</string>
+    <string name="tagline">Forge your progress.</string>
+
+    <string-array name="motivational_quotes">
+        <item>The pain of discipline weighs ounces. The pain of regret weighs tons.</item>
+        <item>You don\'t find willpower, you build it — one rep at a time.</item>
+        <item>Every set you log today is proof for the person you\'re becoming.</item>
+        <item>Consistency beats intensity when intensity isn\'t consistent.</item>
+        <item>The last rep is the only one that counts.</item>
+        <item>Your only competition is the log from last week.</item>
+        <item>Discipline is choosing between what you want now and what you want most.</item>
+        <item>Progress is a whisper of iron, repeated daily.</item>
+        <item>Show up. Log it. Beat it next time.</item>
+        <item>Strength is earned in the rep nobody is watching.</item>
+    </string-array>
+
+    <string name="privacy_policy_title">Your data stays on your phone</string>
+    <string name="privacy_policy_body">RedForge stores every exercise, split, workout, set, measurement, and progress photo directly on this device using a local database and local file storage only.\n\nNo RedForge account or server is required, and the app requests no INTERNET permission. Media controls use Android\'s system media-session access and do not read notification content.\n\nRedForge never uploads your training data automatically. You can explicitly export a backup file when you choose; that file can then be saved wherever you decide.\n\nBecause the core data stays on your device, protect the device with a screen lock and normal device security. Uninstalling RedForge or clearing its storage removes its local data unless you have made an explicit backup.\n\nBy continuing, you acknowledge this local-first storage model.</string>
+    <string name="privacy_accept">I understand and accept</string>
+    <string name="widget_description">Shows today\'s scheduled workout and your current streak.</string>
+
+</resources>
