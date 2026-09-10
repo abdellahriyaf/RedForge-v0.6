@@ -34,7 +34,7 @@ class ProgressViewModel(
     val summaries: StateFlow<List<ExerciseProgressSummary>> = combine(
         exerciseRepository.observeAll(),
         workoutRepository.observeAllWorkingSets()
-    ) { exercises, allWorkingSets ->
+    ) { exercises: List<Exercise>, allWorkingSets: List<SetEntry> ->
         val setsByExercise = allWorkingSets.groupBy { it.exerciseId }
         exercises.mapNotNull { exercise ->
             buildSummary(exercise, setsByExercise[exercise.id].orEmpty())
