@@ -1,5 +1,6 @@
 package com.redforge.app.data.repository
 
+import com.redforge.app.data.local.dao.HistorySessionStats
 import com.redforge.app.data.local.dao.WorkoutDao
 import com.redforge.app.data.local.entities.SetEntry
 import com.redforge.app.data.local.entities.WorkoutSession
@@ -26,6 +27,8 @@ class WorkoutRepository(private val dao: WorkoutDao) {
 
     fun observeAllSessions(): Flow<List<WorkoutSession>> = dao.observeAllSessions()
     suspend fun getSessionsBetween(from: Long, to: Long) = dao.getSessionsBetween(from, to)
+    suspend fun getCompletedSessionsBetween(from: Long, to: Long) =
+        dao.getCompletedSessionsBetween(from, to)
     suspend fun getSession(id: Long) = dao.getSession(id)
 
     /** Creates and immediately persists a new session. */
@@ -91,6 +94,10 @@ class WorkoutRepository(private val dao: WorkoutDao) {
     /** Targeted aggregate used by PR/history code that only needs the best e1RM. */
     suspend fun getBestEstimated1RMForExercise(exerciseId: Long): Double? =
         dao.getBestEstimated1RMForExercise(exerciseId)
+
+    /** Aggregated completed-session history rows for the History list. */
+    fun observeCompletedHistoryStats(): Flow<List<HistorySessionStats>> =
+        dao.observeCompletedHistoryStats()
 
     fun observeAllSetsForExercise(exerciseId: Long): Flow<List<SetEntry>> =
         dao.observeAllSetsForExercise(exerciseId)
