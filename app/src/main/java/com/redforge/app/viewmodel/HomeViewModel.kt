@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+
 package com.redforge.app.viewmodel
 
 import androidx.lifecycle.ViewModel
