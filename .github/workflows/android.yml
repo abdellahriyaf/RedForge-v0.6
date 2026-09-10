@@ -29,3 +29,11 @@ jobs:
 
       - name: Build, test and lint
         run: ./gradlew build test lint --stacktrace
+
+      - name: Upload generated Room schemas
+        if: always() && hashFiles('app/schemas/**/*.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: redforge-room-schemas
+          path: app/schemas/**/*.json
+          if-no-files-found: error
