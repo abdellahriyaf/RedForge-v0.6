@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,7 +46,7 @@ fun ExerciseProgressDetailScreen(
                 title = { Text(state.exercise?.name ?: "Progress") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -154,7 +154,7 @@ private fun TrendChart(
         drawLine(axis, Offset(left, bottom), Offset(right, bottom), strokeWidth = 2f)
         drawLine(axis, Offset(left, top), Offset(left, bottom), strokeWidth = 2f)
 
-        points.zipWithNext().forEachIndexed { index, pair ->
+        points.zipWithNext().forEachIndexed { index, _ ->
             val x1 = left + width * index / (points.lastIndex.coerceAtLeast(1))
             val x2 = left + width * (index + 1) / (points.lastIndex.coerceAtLeast(1))
             val y1 = bottom - ((values[index] - min) / range) * height
