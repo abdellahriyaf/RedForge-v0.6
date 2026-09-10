@@ -5,58 +5,39 @@ import com.redforge.app.data.local.entities.Split
 import com.redforge.app.data.local.entities.SplitDay
 import com.redforge.app.data.local.entities.SplitDayExercise
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 class SplitRepository(private val dao: SplitDao) {
 
-    private val activationMutex = Mutex()
-
     fun observeAllSplits(): Flow<List<Split>> = dao.observeAllSplits()
     fun observeActiveSplit(): Flow<Split?> = dao.observeActiveSplit()
+    fun observeSplit(id: Long): Flow<Split?> = dao.observeSplit(id)
     suspend fun getSplit(id: Long) = dao.getSplit(id)
 
-    suspend fun saveSplit(split: Split): Long = dao.upsertSplit(split.copy(updatedAt = System.currentTimeMillis()))
+    suspend fun saveSplit(split: Split): Long =
+        dao.upsertSplit(split.copy(updatedAt = System.currentTimeMillis()))
 
-    /** Deletes a split along with every day and exercise-assignment that belongs to it — nothing orphaned. */
-    suspend fun deleteSplit(split: Split) {
-        val days = dao.getDaysOnce(split.id)
-        days.forEach { day ->
-            dao.clearExercisesForDay(day.id)
-            dao.deleteDay(day)
-        }
-        dao.deleteSplit(split)
-    }
+    suspend fun deleteSplit(split: Split) = dao.deleteSplitWithChildren(split)
 
-    /** Activates [splitId] as the one-and-only active split (used for streaks + Home). */
-    suspend fun setActiveSplit(splitId: Long) {
-        activationMutex.withLock {
-            dao.clearActiveFlag()
-            dao.markActive(splitId)
-        }
-    }
+    suspend fun setActiveSplit(splitId: Long) = dao.activateSplit(splitId)
 
     fun observeDays(splitId: Long): Flow<List<SplitDay>> = dao.observeDaysForSplit(splitId)
+    fun observeDay(id: Long): Flow<SplitDay?> = dao.observeDay(id)
     suspend fun getDay(id: Long) = dao.getDay(id)
     suspend fun saveDay(day: SplitDay): Long = dao.upsertDay(day)
 
-    /** Deletes a day and any exercise-assignments under it — nothing orphaned. */
-    suspend fun deleteDay(day: SplitDay) {
-        dao.clearExercisesForDay(day.id)
-        dao.deleteDay(day)
-    }
+    suspend fun deleteDay(day: SplitDay) = dao.deleteDayWithExercises(day)
 
-    fun observeDayExercises(dayId: Long): Flow<List<SplitDayExercise>> = dao.observeExercisesForDay(dayId)
+    fun observeDayExercises(dayId: Long): Flow<List<SplitDayExercise>> =
+        dao.observeExercisesForDay(dayId)
+
     suspend fun getDayExercisesOnce(dayId: Long) = dao.getExercisesForDayOnce(dayId)
     suspend fun saveDayExercise(entry: SplitDayExercise): Long = dao.upsertDayExercise(entry)
     suspend fun deleteDayExercise(entry: SplitDayExercise) = dao.deleteDayExercise(entry)
 
-    /** Replaces the full exercise list for a day in one shot — used by the drag-to-reorder editor. */
     suspend fun replaceDayExercises(dayId: Long, exercises: List<SplitDayExercise>) {
-        dao.clearExercisesForDay(dayId)
-        exercises.forEachIndexed { index, entry ->
-            dao.upsertDayExercise(entry.copy(splitDayId = dayId, orderIndex = index))
+        val normalized = exercises.mapIndexed { index, entry ->
+            entry.copy(splitDayId = dayId, orderIndex = index)
         }
+        dao.replaceDayExercises(dayId, normalized)
     }
-
 }
