@@ -14,6 +14,7 @@ import com.redforge.app.data.local.entities.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 
 @Database(
     entities = [
@@ -26,7 +27,7 @@ import kotlinx.coroutines.launch
         ProgressPhoto::class,
         BodyMeasurement::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -38,6 +39,7 @@ abstract class RedForgeDatabase : RoomDatabase() {
 
     companion object {
         @Volatile private var INSTANCE: RedForgeDatabase? = null
+        private val seedStarted = AtomicBoolean(false)
 
         fun getInstance(context: Context): RedForgeDatabase =
             INSTANCE ?: synchronized(this) {
@@ -46,8 +48,6 @@ abstract class RedForgeDatabase : RoomDatabase() {
                     RedForgeDatabase::class.java,
                     "redforge.db"
                 )
-                    // Automatic Android backup/device-transfer is disabled; explicit
-                    // user-initiated backup export is handled by DataBackupUtil.
                     .addCallback(SeedCallback(context.applicationContext))
                     .addMigrations(*ALL_MIGRATIONS)
                     .build()
@@ -59,6 +59,7 @@ abstract class RedForgeDatabase : RoomDatabase() {
             synchronized(this) {
                 INSTANCE?.close()
                 INSTANCE = null
+                seedStarted.set(false)
             }
         }
     }
@@ -67,9 +68,14 @@ abstract class RedForgeDatabase : RoomDatabase() {
     private class SeedCallback(private val context: Context) : RoomDatabase.Callback() {
         override fun onOpen(db: SupportSQLiteDatabase) {
             super.onOpen(db)
+            if (!seedStarted.compareAndSet(false, true)) return
             CoroutineScope(Dispatchers.IO).launch {
-                val database = getInstance(context)
-                ExerciseLibrarySeeder.ensureSeeded(database)
+                runCatching {
+                    val database = getInstance(context)
+                    ExerciseLibrarySeeder.ensureSeeded(database)
+                }.onFailure {
+                    seedStarted.set(false)
+                }
             }
         }
     }
