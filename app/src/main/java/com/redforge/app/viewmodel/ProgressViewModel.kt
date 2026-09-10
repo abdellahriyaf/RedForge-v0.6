@@ -11,7 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-
 data class ExerciseProgressSummary(
     val exercise: Exercise,
     val bestEstimated1RM: Int,
@@ -105,12 +104,10 @@ class ExerciseProgressDetailViewModel(
             ExerciseTrendPoint(
                 sessionId = sessionId,
                 date = session.startedAt,
-                estimated1RM = StrengthFormulas.displayRounded(
-                    StrengthFormulas.bestEstimated1RM(sessionSets)
-                ),
-                volume = StrengthFormulas.displayRounded(
-                    sessionSets.sumOf { it.weight * it.reps }
-                )
+                estimated1RM = sessionSets.maxOfOrNull {
+                    StrengthFormulas.estimated1RM(it.weight, it.reps)
+                }?.let(StrengthFormulas::displayRounded) ?: 0,
+                volume = sessionSets.sumOf { it.weight * it.reps }.let(StrengthFormulas::displayRounded)
             )
         }.sortedBy { it.date }
 
