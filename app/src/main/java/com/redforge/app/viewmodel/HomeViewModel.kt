@@ -9,7 +9,6 @@ import com.redforge.app.data.local.entities.SplitDay
 import com.redforge.app.data.local.entities.WorkoutSession
 import com.redforge.app.data.repository.SplitRepository
 import com.redforge.app.data.repository.WorkoutRepository
-import com.redforge.app.domain.formulas.StrengthFormulas
 import com.redforge.app.domain.schedule.SplitScheduler
 import com.redforge.app.domain.streak.StreakCalculator
 import kotlinx.coroutines.flow.*
@@ -42,13 +41,23 @@ class HomeViewModel(
     private val _milestoneEvent = MutableStateFlow<Int?>(null)
     val milestoneEvent: StateFlow<Int?> = _milestoneEvent.asStateFlow()
 
+    private val activeSplitWithDays: Flow<Pair<Split?, List<SplitDay>>> =
+        splitRepository.observeActiveSplit().flatMapLatest { split ->
+            if (split == null) {
+                flowOf(null to emptyList())
+            } else {
+                splitRepository.observeDays(split.id).map { days -> split to days }
+            }
+        }
+
     val uiState: StateFlow<HomeUiState> = combine(
-        splitRepository.observeActiveSplit(),
+        activeSplitWithDays,
         workoutRepository.observeInProgressSession(),
         workoutRepository.observeAllSessions(),
         settingsDataStore.settingsFlow
-    ) { activeSplit, inProgress, allSessions, settings ->
-        val days = activeSplit?.let { splitRepository.observeDays(it.id).first() }.orEmpty()
+    ) { splitAndDays, inProgress, allSessions, settings ->
+        val activeSplit = splitAndDays.first
+        val days = splitAndDays.second
         val today = System.currentTimeMillis()
         val scheduleAnchor = settings.scheduleAnchorStartMillis.takeIf {
             it != null && settings.scheduleAnchorSplitId == activeSplit?.id
@@ -68,15 +77,12 @@ class HomeViewModel(
                 days.any { it.id == session.splitDayId } &&
                 isSameCalendarDay(session.startedAt, today)
         }
+
         val weekStart = startOfWeekMillis(today)
-        val weekSessions = allSessions.filter { it.completed && it.startedAt >= weekStart && it.startedAt <= today }
-        var weekSets = 0
-        var weekVolume = 0.0
-        weekSessions.forEach { session ->
-            val sets = workoutRepository.getSetsOnce(session.id)
-            weekSets += sets.size
-            weekVolume += StrengthFormulas.totalVolume(sets)
+        val weekSessions = allSessions.filter {
+            it.completed && it.startedAt >= weekStart && it.startedAt <= today
         }
+        val weekStats = workoutRepository.getSetStatsBetween(weekStart, today)
 
         HomeUiState(
             activeSplit = activeSplit,
@@ -86,13 +92,13 @@ class HomeViewModel(
             currentStreak = streak.current,
             longestStreak = streak.longest,
             weekWorkouts = weekSessions.size,
-            weekSets = weekSets,
-            weekVolume = StrengthFormulas.displayRounded(weekVolume),
+            weekSets = weekStats.setCount,
+            weekVolume = weekStats.totalVolume.toInt(),
             settings = settings,
             scheduleNotStarted = scheduleNotStarted,
             loading = false
         )
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     init {
         viewModelScope.launch {
