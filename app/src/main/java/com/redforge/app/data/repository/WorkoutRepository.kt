@@ -1,6 +1,7 @@
 package com.redforge.app.data.repository
 
 import com.redforge.app.data.local.dao.HistorySessionStats
+import com.redforge.app.data.local.dao.SetStats
 import com.redforge.app.data.local.dao.WorkoutDao
 import com.redforge.app.data.local.entities.SetEntry
 import com.redforge.app.data.local.entities.WorkoutSession
@@ -26,10 +27,11 @@ class WorkoutRepository(private val dao: WorkoutDao) {
     suspend fun getInProgressSession(): WorkoutSession? = dao.getInProgressSession()
 
     fun observeAllSessions(): Flow<List<WorkoutSession>> = dao.observeAllSessions()
-    suspend fun getSessionsBetween(from: Long, to: Long) = dao.getSessionsBetween(from, to)
-    suspend fun getCompletedSessionsBetween(from: Long, to: Long) =
+    suspend fun getSessionsBetween(from: Long, to: Long): List<WorkoutSession> =
+        dao.getSessionsBetween(from, to)
+    suspend fun getCompletedSessionsBetween(from: Long, to: Long): List<WorkoutSession> =
         dao.getCompletedSessionsBetween(from, to)
-    suspend fun getSession(id: Long) = dao.getSession(id)
+    suspend fun getSession(id: Long): WorkoutSession? = dao.getSession(id)
 
     /** Creates and immediately persists a new session. */
     suspend fun startSession(splitDayId: Long?, splitDayName: String): Long =
@@ -46,7 +48,7 @@ class WorkoutRepository(private val dao: WorkoutDao) {
     }
 
     fun observeSets(sessionId: Long): Flow<List<SetEntry>> = dao.observeSetsForSession(sessionId)
-    suspend fun getSetsOnce(sessionId: Long) = dao.getSetsForSessionOnce(sessionId)
+    suspend fun getSetsOnce(sessionId: Long): List<SetEntry> = dao.getSetsForSessionOnce(sessionId)
 
     /** Writes one set immediately; callers should never batch set logging in memory. */
     suspend fun logSet(set: SetEntry): Long = dao.upsertSet(set)
@@ -68,6 +70,9 @@ class WorkoutRepository(private val dao: WorkoutDao) {
         dao.scaleAllWeights(factor)
         clearRecentSetsCache()
     }
+
+    suspend fun getSetStatsBetween(from: Long, to: Long): SetStats =
+        dao.getSetStatsBetween(from, to)
 
     suspend fun deleteSetAndReindex(set: SetEntry) {
         dao.deleteSetAndReindex(set)
