@@ -78,9 +78,13 @@ class WorkoutRepository(private val dao: WorkoutDao) {
      */
     suspend fun getRecentSetsForExercise(exerciseId: Long, limit: Int = 50): List<SetEntry> =
         recentSetsCacheMutex.withLock {
-            val loaded = recentSetsCache.getOrPut(exerciseId) {
-                dao.getRecentSetsForExercise(exerciseId, 1000)
+            val cached = recentSetsCache[exerciseId]
+            if (cached != null) {
+                return@withLock cached.take(limit.coerceAtLeast(0))
             }
+
+            val loaded = dao.getRecentSetsForExercise(exerciseId, 1000)
+            recentSetsCache[exerciseId] = loaded
             loaded.take(limit.coerceAtLeast(0))
         }
 
