@@ -9,7 +9,6 @@ import com.redforge.app.domain.streak.StreakCalculator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -36,28 +35,17 @@ class ShareViewModel(
     fun load(scope: ShareScope) {
         viewModelScope.launch {
             val (from, to) = rangeFor(scope)
-            val sessions = workoutRepository
-                .getSessionsBetween(from, to)
-                .filter { it.completed }
-
-            var totalSets = 0
-            var totalVolume = 0.0
-
-            sessions.forEach { session ->
-                val sets = workoutRepository.getSetsOnce(session.id)
-                totalSets += sets.count { !it.isWarmup }
-                totalVolume += StrengthFormulas.totalVolume(sets.filter { !it.isWarmup })
-            }
-
-            val allSessions = workoutRepository.observeAllSessions().first()
+            val sessions = workoutRepository.getCompletedSessionsBetween(from, to)
+            val setStats = workoutRepository.getSetStatsBetween(from, to)
+            val allSessions = workoutRepository.getCompletedSessionsBetween(0L, to)
             val activeSplit = splitRepository.observeActiveSplit().first()
-            val streak = StreakCalculator.compute(allSessions)
+            val streak = StreakCalculator.compute(allSessions, nowMillis = to)
 
             _summary.value = ShareSummary(
                 scope = scope,
                 workoutsCompleted = sessions.size,
-                totalSets = totalSets,
-                totalVolume = StrengthFormulas.displayRounded(totalVolume),
+                totalSets = setStats.setCount,
+                totalVolume = StrengthFormulas.displayRounded(setStats.totalVolume),
                 currentStreak = streak.current,
                 splitName = activeSplit?.name ?: "RedForge"
             )
