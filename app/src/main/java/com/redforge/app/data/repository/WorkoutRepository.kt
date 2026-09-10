@@ -1,5 +1,6 @@
 package com.redforge.app.data.repository
 
+import com.redforge.app.data.local.dao.ExerciseProgressSet
 import com.redforge.app.data.local.dao.HistorySessionStats
 import com.redforge.app.data.local.dao.SetStats
 import com.redforge.app.data.local.dao.WorkoutDao
@@ -106,6 +107,12 @@ class WorkoutRepository(private val dao: WorkoutDao) {
 
     fun observeAllSetsForExercise(exerciseId: Long): Flow<List<SetEntry>> =
         dao.observeAllSetsForExercise(exerciseId)
+
+    fun observeAllWorkingSets(): Flow<List<SetEntry>> =
+        dao.observeAllWorkingSets()
+
+    suspend fun getCompletedSetsForExercise(exerciseId: Long): List<ExerciseProgressSet> =
+        dao.getCompletedSetsForExercise(exerciseId)
 
     private suspend fun clearRecentSetsCache() {
         recentSetsCacheMutex.withLock {
