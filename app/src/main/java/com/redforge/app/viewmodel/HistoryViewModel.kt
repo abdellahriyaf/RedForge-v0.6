@@ -6,6 +6,7 @@ import com.redforge.app.data.local.entities.SetEntry
 import com.redforge.app.data.local.entities.WorkoutSession
 import com.redforge.app.data.repository.ExerciseRepository
 import com.redforge.app.data.repository.WorkoutRepository
+import com.redforge.app.domain.formulas.StrengthFormulas
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -26,6 +27,7 @@ class HistoryViewModel(
     private val workoutRepository: WorkoutRepository
 ) : ViewModel() {
 
+    /** One SQL projection now drives the whole history list; no per-session set query is needed. */
     val sessions: StateFlow<List<HistorySessionUi>> =
         workoutRepository.observeCompletedHistoryStats()
             .map { rows ->
@@ -41,7 +43,7 @@ class HistoryViewModel(
                         ),
                         setCount = row.setCount,
                         workingSetCount = row.workingSetCount,
-                        volume = row.totalVolume.toInt()
+                        volume = StrengthFormulas.displayRounded(row.totalVolume)
                     )
                 }
             }
@@ -93,9 +95,9 @@ class HistoryDetailViewModel(
         _uiState.value = UiState(
             session = session,
             exercises = groups,
-            totalVolume = sets.sumOf {
-                if (it.completed && !it.isWarmup) it.weight * it.reps else 0.0
-            }.toInt(),
+            totalVolume = StrengthFormulas.displayRounded(
+                StrengthFormulas.totalVolume(sets)
+            ),
             loading = false
         )
     }
