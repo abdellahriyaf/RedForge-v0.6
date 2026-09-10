@@ -2,8 +2,7 @@ package com.redforge.app.domain.schedule
 
 import com.redforge.app.data.local.entities.SplitDay
 import com.redforge.app.data.local.entities.WorkoutSession
-import java.time.Instant
-import java.time.ZoneId
+import java.util.Calendar
 import java.util.TimeZone
 
 /**
@@ -23,13 +22,7 @@ object SplitScheduler {
         targetTimeMillis: Long = System.currentTimeMillis(),
         timeZone: TimeZone = TimeZone.getDefault(),
         scheduleAnchorStartMillis: Long? = null
-    ): SplitDay? = plannedDayForDate(
-        days,
-        recentSessions,
-        targetTimeMillis,
-        timeZone,
-        scheduleAnchorStartMillis
-    )
+    ): SplitDay? = plannedDayForDate(days, recentSessions, targetTimeMillis, timeZone, scheduleAnchorStartMillis)
 
     fun plannedDayForDate(
         days: List<SplitDay>,
@@ -48,9 +41,7 @@ object SplitScheduler {
 
         val lastCompletedForThisSplit = recentSessions.asSequence()
             .filter { it.completed && it.splitDayId != null && dayIdToIndex.containsKey(it.splitDayId) }
-            .filter { session ->
-                anchorDay == null || civilDay(session.startedAt, timeZone) >= anchorDay
-            }
+            .filter { session -> anchorDay == null || civilDay(session.startedAt, timeZone) >= anchorDay }
             .maxByOrNull { it.startedAt }
 
         if (lastCompletedForThisSplit == null) {
@@ -62,7 +53,6 @@ object SplitScheduler {
         val lastIndex = dayIdToIndex[lastCompletedForThisSplit.splitDayId] ?: return ordered.first()
         val elapsedCalendarDays = targetDay - civilDay(lastCompletedForThisSplit.startedAt, timeZone)
         if (elapsedCalendarDays < 0) return ordered.first()
-
         return ordered[(lastIndex + elapsedCalendarDays.toInt()) % ordered.size]
     }
 
@@ -72,9 +62,25 @@ object SplitScheduler {
         timeZone: TimeZone = TimeZone.getDefault()
     ): Boolean = civilDay(targetTimeMillis, timeZone) < civilDay(anchorStartMillis, timeZone)
 
-    private fun civilDay(millis: Long, timeZone: TimeZone): Long =
-        Instant.ofEpochMilli(millis)
-            .atZone(ZoneId.of(timeZone.id))
-            .toLocalDate()
-            .toEpochDay()
+    private fun civilDay(millis: Long, timeZone: TimeZone): Long {
+        val calendar = Calendar.getInstance(timeZone).apply { timeInMillis = millis }
+        return gregorianEpochDay(
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH) + 1,
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+    }
+
+    /** Constant-time proleptic Gregorian date -> epoch-day conversion. */
+    private fun gregorianEpochDay(year: Int, month: Int, day: Int): Long {
+        var y = year.toLong()
+        val m = month.toLong()
+        y -= if (m <= 2) 1 else 0
+        val era = Math.floorDiv(y, 400L)
+        val yoe = y - era * 400L
+        val mp = m + if (m > 2) -3 else 9
+        val doy = (153L * mp + 2L) / 5L + day - 1L
+        val doe = yoe * 365L + yoe / 4L - yoe / 100L + doy
+        return era * 146097L + doe - 719468L
+    }
 }
