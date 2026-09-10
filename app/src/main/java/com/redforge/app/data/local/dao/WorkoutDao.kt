@@ -5,14 +5,37 @@ import com.redforge.app.data.local.entities.SetEntry
 import com.redforge.app.data.local.entities.WorkoutSession
 import kotlinx.coroutines.flow.Flow
 
+data class HistorySessionStats(
+    val sessionId: Long,
+    val splitDayNameSnapshot: String,
+    val startedAt: Long,
+    val endedAt: Long?,
+    val setCount: Int,
+    val totalVolume: Double
+)
+
+data class SetStats(
+    val setCount: Int,
+    val totalVolume: Double
+)
+
+data class ExerciseProgressSet(
+    val id: Long,
+    val workoutSessionId: Long,
+    val exerciseId: Long,
+    val setIndex: Int,
+    val weight: Double,
+    val reps: Int,
+    val isWarmup: Boolean,
+    val rpe: Float?,
+    val completed: Boolean,
+    val isPersonalRecord: Boolean,
+    val loggedAt: Long
+)
+
 @Dao
 interface WorkoutDao {
 
-    /**
-     * There should only ever be zero or one of these. If the app process
-     * was killed mid-workout, this is how we find it again on next launch
-     * and resume exactly where the user left off.
-     */
     @Query("SELECT * FROM workout_sessions WHERE completed = 0 ORDER BY startedAt DESC LIMIT 1")
     suspend fun getInProgressSession(): WorkoutSession?
 
@@ -22,8 +45,17 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout_sessions ORDER BY startedAt DESC")
     fun observeAllSessions(): Flow<List<WorkoutSession>>
 
+    @Query("SELECT * FROM workout_sessions WHERE completed = 1 ORDER BY startedAt DESC")
+    fun observeCompletedSessions(): Flow<List<WorkoutSession>>
+
     @Query("SELECT * FROM workout_sessions WHERE startedAt BETWEEN :from AND :to ORDER BY startedAt ASC")
     suspend fun getSessionsBetween(from: Long, to: Long): List<WorkoutSession>
+
+    @Query("SELECT * FROM workout_sessions WHERE completed = 1 AND startedAt BETWEEN :from AND :to ORDER BY startedAt ASC")
+    suspend fun getCompletedSessionsBetween(from: Long, to: Long): List<WorkoutSession>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM workout_sessions WHERE completed = 1 AND startedAt BETWEEN :from AND :to LIMIT 1)")
+    suspend fun hasCompletedSessionBetween(from: Long, to: Long): Boolean
 
     @Query("SELECT * FROM workout_sessions WHERE id = :id")
     suspend fun getSession(id: Long): WorkoutSession?
@@ -43,15 +75,12 @@ interface WorkoutDao {
         deleteSession(session)
     }
 
-    // ---- Sets ----
-
     @Query("SELECT * FROM set_entries WHERE workoutSessionId = :sessionId ORDER BY exerciseId, setIndex ASC")
     fun observeSetsForSession(sessionId: Long): Flow<List<SetEntry>>
 
     @Query("SELECT * FROM set_entries WHERE workoutSessionId = :sessionId ORDER BY exerciseId, setIndex ASC")
     suspend fun getSetsForSessionOnce(sessionId: Long): List<SetEntry>
 
-    /** Every previous set logged for this exercise, most recent workout first — used for "last time you did X" prompts. */
     @Query("""
         SELECT se.* FROM set_entries se
         INNER JOIN workout_sessions ws ON ws.id = se.workoutSessionId
@@ -63,7 +92,75 @@ interface WorkoutDao {
     @Query("SELECT * FROM set_entries WHERE exerciseId = :exerciseId ORDER BY loggedAt DESC")
     fun observeAllSetsForExercise(exerciseId: Long): Flow<List<SetEntry>>
 
-    /** Written immediately when a set is confirmed — this single call is the data-loss guarantee. */
+    @Query("""
+        SELECT se.* FROM set_entries se
+        INNER JOIN workout_sessions ws ON ws.id = se.workoutSessionId
+        WHERE ws.completed = 1 AND se.completed = 1 AND se.isWarmup = 0
+        ORDER BY se.loggedAt ASC
+    """)
+    fun observeAllWorkingSets(): Flow<List<SetEntry>>
+
+    @Query("""
+        SELECT se.id, se.workoutSessionId, se.exerciseId, se.setIndex, se.weight, se.reps,
+               se.isWarmup, se.rpe, se.completed, se.isPersonalRecord, se.loggedAt
+        FROM set_entries se
+        INNER JOIN workout_sessions ws ON ws.id = se.workoutSessionId
+        WHERE se.exerciseId = :exerciseId
+          AND ws.completed = 1
+          AND se.completed = 1
+          AND se.isWarmup = 0
+        ORDER BY se.loggedAt ASC
+    """)
+    suspend fun getCompletedSetsForExercise(exerciseId: Long): List<ExerciseProgressSet>
+
+    @Query("""
+        SELECT COUNT(se.id) AS setCount,
+               COALESCE(SUM(se.weight * se.reps), 0.0) AS totalVolume
+        FROM set_entries se
+        INNER JOIN workout_sessions ws ON ws.id = se.workoutSessionId
+        WHERE ws.completed = 1
+          AND se.completed = 1
+          AND se.isWarmup = 0
+          AND se.loggedAt BETWEEN :from AND :to
+    """)
+    suspend fun getSetStatsBetween(from: Long, to: Long): SetStats
+
+    @Query("""
+        SELECT ws.id AS sessionId,
+               ws.splitDayNameSnapshot AS splitDayNameSnapshot,
+               ws.startedAt AS startedAt,
+               ws.endedAt AS endedAt,
+               COUNT(se.id) AS setCount,
+               COALESCE(SUM(CASE WHEN se.completed = 1 AND se.isWarmup = 0 THEN se.weight * se.reps ELSE 0 END), 0.0) AS totalVolume
+        FROM workout_sessions ws
+        LEFT JOIN set_entries se ON se.workoutSessionId = ws.id
+        WHERE ws.completed = 1
+        GROUP BY ws.id
+        ORDER BY ws.startedAt DESC
+    """)
+    fun observeCompletedHistoryStats(): Flow<List<HistorySessionStats>>
+
+    @Query("""
+        SELECT MAX(se.weight * (1.0 + se.reps / 30.0))
+        FROM set_entries se
+        INNER JOIN workout_sessions ws ON ws.id = se.workoutSessionId
+        WHERE se.exerciseId = :exerciseId
+          AND ws.completed = 1
+          AND se.completed = 1
+          AND se.isWarmup = 0
+          AND se.reps > 0
+          AND se.weight > 0
+    """)
+    suspend fun getBestEstimated1RMForExercise(exerciseId: Long): Double?
+
+    @Query("""
+        SELECT se.* FROM set_entries se
+        INNER JOIN workout_sessions ws ON ws.id = se.workoutSessionId
+        WHERE se.exerciseId = :exerciseId AND ws.completed = 1 AND se.completed = 1
+        ORDER BY se.loggedAt DESC LIMIT 1
+    """)
+    suspend fun getLatestCompletedSetForExercise(exerciseId: Long): SetEntry?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertSet(set: SetEntry): Long
 
