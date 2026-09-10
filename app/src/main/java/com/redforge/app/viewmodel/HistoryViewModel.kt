@@ -6,9 +6,8 @@ import com.redforge.app.data.local.entities.SetEntry
 import com.redforge.app.data.local.entities.WorkoutSession
 import com.redforge.app.data.repository.ExerciseRepository
 import com.redforge.app.data.repository.WorkoutRepository
-import com.redforge.app.domain.formulas.StrengthFormulas
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 
 /** Summary row used by the History list. */
 data class HistorySessionUi(
@@ -30,23 +29,25 @@ class HistoryViewModel(
 ) : ViewModel() {
 
     val sessions: StateFlow<List<HistorySessionUi>> =
-        workoutRepository.observeAllSessions()
-            .map { sessions ->
-                sessions
-                    .filter { it.completed }
-                    .map { session ->
-                        val sets = workoutRepository.getSetsOnce(session.id)
-                        HistorySessionUi(
-                            session = session,
-                            setCount = sets.size,
-                            workingSetCount = sets.count { !it.isWarmup },
-                            volume = StrengthFormulas.displayRounded(
-                                StrengthFormulas.totalVolume(sets)
-                            )
-                        )
-                    }
+        workoutRepository.observeCompletedHistoryStats()
+            .map { rows ->
+                rows.map { row ->
+                    HistorySessionUi(
+                        session = WorkoutSession(
+                            id = row.sessionId,
+                            splitDayId = null,
+                            splitDayNameSnapshot = row.splitDayNameSnapshot,
+                            startedAt = row.startedAt,
+                            endedAt = row.endedAt,
+                            completed = true
+                        ),
+                        setCount = row.setCount,
+                        workingSetCount = row.workingSetCount,
+                        volume = row.totalVolume.toInt()
+                    )
+                }
             }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 }
 
 class HistoryDetailViewModel(
@@ -67,27 +68,26 @@ class HistoryDetailViewModel(
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            load()
-        }
+        viewModelScope.launch { load() }
     }
 
     private suspend fun load() {
         val session = workoutRepository.getSession(sessionId)
         if (session == null || !session.completed) {
-            _uiState.value = UiState(
-                loading = false,
-                error = "That workout could not be found."
-            )
+            _uiState.value = UiState(loading = false, error = "That workout could not be found.")
             return
         }
 
         val sets = workoutRepository.getSetsOnce(session.id)
+        val exerciseIds = sets.asSequence().map { it.exerciseId }.distinct().toList()
+        val exerciseMap = exerciseIds.mapNotNull { id ->
+            exerciseRepository.getById(id)?.let { id to it }
+        }.toMap()
+
         val groups = sets
             .groupBy { it.exerciseId }
             .mapNotNull { (exerciseId, entries) ->
-                val exercise = exerciseRepository.getById(exerciseId)
-                    ?: return@mapNotNull null
+                val exercise = exerciseMap[exerciseId] ?: return@mapNotNull null
                 HistoryExerciseUi(
                     exerciseId = exerciseId,
                     name = exercise.name,
@@ -99,32 +99,15 @@ class HistoryDetailViewModel(
         _uiState.value = UiState(
             session = session,
             exercises = groups,
-            totalVolume = StrengthFormulas.displayRounded(
-                StrengthFormulas.totalVolume(sets)
-            ),
+            totalVolume = sets.sumOf { if (it.completed && !it.isWarmup) it.weight * it.reps else 0.0 }.toInt(),
             loading = false
         )
     }
 
-    fun updateSet(
-        set: SetEntry,
-        weight: Double,
-        reps: Int,
-        rpe: Float?
-    ) {
+    fun updateSet(set: SetEntry, weight: Double, reps: Int, rpe: Float?) {
         if (weight < 0.0 || reps <= 0) return
-
         viewModelScope.launch {
-            workoutRepository.updateSet(
-                set.copy(
-                    weight = weight,
-                    reps = reps,
-                    rpe = rpe,
-                    // A manual correction invalidates the original PR flag;
-                    // current/future PRs are recalculated when a new set is logged.
-                    isPersonalRecord = false
-                )
-            )
+            workoutRepository.updateSet(set.copy(weight = weight, reps = reps, rpe = rpe, isPersonalRecord = false))
             load()
         }
     }
