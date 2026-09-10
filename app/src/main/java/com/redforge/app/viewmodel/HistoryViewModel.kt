@@ -9,7 +9,6 @@ import com.redforge.app.data.repository.WorkoutRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-/** Summary row used by the History list. */
 data class HistorySessionUi(
     val session: WorkoutSession,
     val setCount: Int,
@@ -17,7 +16,6 @@ data class HistorySessionUi(
     val volume: Int
 )
 
-/** One exercise group inside a completed history session. */
 data class HistoryExerciseUi(
     val exerciseId: Long,
     val name: String,
@@ -79,11 +77,7 @@ class HistoryDetailViewModel(
         }
 
         val sets = workoutRepository.getSetsOnce(session.id)
-        val exerciseIds = sets.asSequence().map { it.exerciseId }.distinct().toList()
-        val exerciseMap = exerciseIds.mapNotNull { id ->
-            exerciseRepository.getById(id)?.let { id to it }
-        }.toMap()
-
+        val exerciseMap = exerciseRepository.getAllOnce().associateBy { it.id }
         val groups = sets
             .groupBy { it.exerciseId }
             .mapNotNull { (exerciseId, entries) ->
@@ -99,7 +93,9 @@ class HistoryDetailViewModel(
         _uiState.value = UiState(
             session = session,
             exercises = groups,
-            totalVolume = sets.sumOf { if (it.completed && !it.isWarmup) it.weight * it.reps else 0.0 }.toInt(),
+            totalVolume = sets.sumOf {
+                if (it.completed && !it.isWarmup) it.weight * it.reps else 0.0
+            }.toInt(),
             loading = false
         )
     }
@@ -107,7 +103,9 @@ class HistoryDetailViewModel(
     fun updateSet(set: SetEntry, weight: Double, reps: Int, rpe: Float?) {
         if (weight < 0.0 || reps <= 0) return
         viewModelScope.launch {
-            workoutRepository.updateSet(set.copy(weight = weight, reps = reps, rpe = rpe, isPersonalRecord = false))
+            workoutRepository.updateSet(
+                set.copy(weight = weight, reps = reps, rpe = rpe, isPersonalRecord = false)
+            )
             load()
         }
     }
