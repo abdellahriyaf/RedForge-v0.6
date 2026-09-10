@@ -114,6 +114,7 @@ interface WorkoutDao {
     """)
     suspend fun getCompletedSetsForExercise(exerciseId: Long): List<ExerciseProgressSet>
 
+    /** Working-set count and volume for sessions whose start time is in the requested range. */
     @Query("""
         SELECT COUNT(se.id) AS setCount,
                COALESCE(SUM(se.weight * se.reps), 0.0) AS totalVolume
@@ -122,7 +123,7 @@ interface WorkoutDao {
         WHERE ws.completed = 1
           AND se.completed = 1
           AND se.isWarmup = 0
-          AND se.loggedAt BETWEEN :from AND :to
+          AND ws.startedAt BETWEEN :from AND :to
     """)
     suspend fun getSetStatsBetween(from: Long, to: Long): SetStats
 
@@ -132,7 +133,7 @@ interface WorkoutDao {
                ws.startedAt AS startedAt,
                ws.endedAt AS endedAt,
                COUNT(se.id) AS setCount,
-               SUM(CASE WHEN se.completed = 1 AND se.isWarmup = 0 THEN 1 ELSE 0 END) AS workingSetCount,
+               COUNT(CASE WHEN se.completed = 1 AND se.isWarmup = 0 THEN 1 END) AS workingSetCount,
                COALESCE(SUM(CASE WHEN se.completed = 1 AND se.isWarmup = 0 THEN se.weight * se.reps ELSE 0 END), 0.0) AS totalVolume
         FROM workout_sessions ws
         LEFT JOIN set_entries se ON se.workoutSessionId = ws.id
