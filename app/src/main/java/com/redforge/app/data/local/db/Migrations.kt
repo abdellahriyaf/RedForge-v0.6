@@ -33,4 +33,21 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
-val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+/** v3 -> v4: performance indexes only; no user data is rewritten or removed. */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_exercises_name ON exercises(name)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_splits_isActive ON splits(isActive)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_splits_updatedAt ON splits(updatedAt)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_split_days_splitId_dayOrder ON split_days(splitId, dayOrder)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_split_day_exercises_splitDayId_orderIndex ON split_day_exercises(splitDayId, orderIndex)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_sessions_completed_startedAt ON workout_sessions(completed, startedAt)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_sessions_splitDayId_startedAt ON workout_sessions(splitDayId, startedAt)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_set_entries_workoutSessionId_exerciseId_setIndex ON set_entries(workoutSessionId, exerciseId, setIndex)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_set_entries_exerciseId_loggedAt ON set_entries(exerciseId, loggedAt)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_progress_photos_takenAt ON progress_photos(takenAt)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_body_measurements_date ON body_measurements(date)")
+    }
+}
+
+val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
