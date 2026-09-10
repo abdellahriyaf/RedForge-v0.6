@@ -76,6 +76,5 @@ dependencies {
     implementation("androidx.glance:glance-appwidget:1.1.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("androidx.room:room-testing:2.6.1")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
 }
