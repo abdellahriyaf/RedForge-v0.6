@@ -1,7 +1,6 @@
 package com.redforge.app.ui.theme
 
 import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -13,10 +12,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-/**
- * RedForge is dark-first by design (an "energetic red and black" gym app),
- * but we still expose a light variant for users who prefer it from Settings.
- */
 private val ForgeDarkColorScheme = darkColorScheme(
     primary = ForgeRed,
     onPrimary = ForgeWhite,
@@ -50,28 +45,32 @@ private val ForgeLightColorScheme = lightColorScheme(
 @Composable
 fun RedForgeTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    forceDark: Boolean = true, // app default: always energetic dark mode unless user overrides in Settings
+    forceDark: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val useDark = forceDark || darkTheme
     val colorScheme = if (useDark) ForgeDarkColorScheme else ForgeLightColorScheme
-
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as? Activity)?.window ?: return@SideEffect
-            window.statusBarColor = colorScheme.background.toArgb()
-            window.navigationBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !useDark
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !useDark
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !useDark
+                isAppearanceLightNavigationBars = !useDark
             }
+            window.setStatusBarColorCompat(colorScheme.background.toArgb())
+            window.setNavigationBarColorCompat(colorScheme.background.toArgb())
         }
     }
+    MaterialTheme(colorScheme = colorScheme, typography = ForgeTypography, content = content)
+}
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = ForgeTypography,
-        content = content
-    )
+private fun android.view.Window.setStatusBarColorCompat(color: Int) {
+    addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+    statusBarColor = color
+}
+
+private fun android.view.Window.setNavigationBarColorCompat(color: Int) {
+    addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+    navigationBarColor = color
 }
