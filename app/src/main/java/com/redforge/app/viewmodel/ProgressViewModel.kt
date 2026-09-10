@@ -8,7 +8,14 @@ import com.redforge.app.data.repository.ExerciseRepository
 import com.redforge.app.data.repository.WorkoutRepository
 import com.redforge.app.domain.formulas.StrengthFormulas
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class ExerciseProgressSummary(
@@ -31,17 +38,18 @@ class ProgressViewModel(
     private val workoutRepository: WorkoutRepository
 ) : ViewModel() {
 
-    val summaries: StateFlow<List<ExerciseProgressSummary>> = combine(
-        exerciseRepository.observeAll(),
-        workoutRepository.observeAllWorkingSets()
-    ) { exercises: List<Exercise>, allWorkingSets: List<SetEntry> ->
-        val setsByExercise = allWorkingSets.groupBy { it.exerciseId }
-        exercises.mapNotNull { exercise ->
-            buildSummary(exercise, setsByExercise[exercise.id].orEmpty())
-        }.sortedByDescending { it.totalVolumeAllTime }
-    }
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    private val exercisesFlow: Flow<List<Exercise>> = exerciseRepository.observeAll()
+    private val workingSetsFlow: Flow<List<SetEntry>> = workoutRepository.observeAllWorkingSets()
+
+    val summaries: StateFlow<List<ExerciseProgressSummary>> =
+        exercisesFlow.combine(workingSetsFlow) { exercises, allWorkingSets ->
+            val setsByExercise = allWorkingSets.groupBy { it.exerciseId }
+            exercises.mapNotNull { exercise ->
+                buildSummary(exercise, setsByExercise[exercise.id].orEmpty())
+            }.sortedByDescending { it.totalVolumeAllTime }
+        }
+            .flowOn(Dispatchers.Default)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private fun buildSummary(exercise: Exercise, sets: List<SetEntry>): ExerciseProgressSummary? {
         if (sets.isEmpty()) return null
