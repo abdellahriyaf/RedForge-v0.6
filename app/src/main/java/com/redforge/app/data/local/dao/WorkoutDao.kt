@@ -11,6 +11,7 @@ data class HistorySessionStats(
     val startedAt: Long,
     val endedAt: Long?,
     val setCount: Int,
+    val workingSetCount: Int,
     val totalVolume: Double
 )
 
@@ -131,6 +132,7 @@ interface WorkoutDao {
                ws.startedAt AS startedAt,
                ws.endedAt AS endedAt,
                COUNT(se.id) AS setCount,
+               SUM(CASE WHEN se.completed = 1 AND se.isWarmup = 0 THEN 1 ELSE 0 END) AS workingSetCount,
                COALESCE(SUM(CASE WHEN se.completed = 1 AND se.isWarmup = 0 THEN se.weight * se.reps ELSE 0 END), 0.0) AS totalVolume
         FROM workout_sessions ws
         LEFT JOIN set_entries se ON se.workoutSessionId = ws.id
