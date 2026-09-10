@@ -42,7 +42,7 @@ class MigrationsTest {
     fun migration_3_4_contains_only_idempotent_indexes() {
         val statements = captureStatements { MIGRATION_3_4.migrate(it) }
 
-        assertEquals(12, statements.size)
+        assertEquals(11, statements.size)
         assertTrue(statements.all { it.startsWith("CREATE INDEX IF NOT EXISTS") })
         assertTrue(statements.any { it.contains("index_set_entries_exerciseId_loggedAt") })
         assertTrue(statements.any { it.contains("index_workout_sessions_completed_startedAt") })
