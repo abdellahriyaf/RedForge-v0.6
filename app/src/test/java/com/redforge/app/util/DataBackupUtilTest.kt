@@ -4,6 +4,7 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
@@ -36,7 +37,7 @@ class DataBackupUtilTest {
     @Test
     fun limited_zip_reader_reads_expected_bytes() {
         val source = zipOf("redforge_backup_marker.txt", "RedForge backup|format=1|")
-        ZipInputStream(source.inputStream()).use { zip ->
+        ZipInputStream(ByteArrayInputStream(source.toByteArray())).use { zip ->
             zip.nextEntry
             val bytes = invokeByteArray("readEntryLimited", zip, 1024L)
             assertArrayEquals("RedForge backup|format=1|".toByteArray(), bytes)
@@ -46,7 +47,7 @@ class DataBackupUtilTest {
     @Test
     fun limited_zip_reader_rejects_oversized_entries() {
         val source = zipOf("redforge_backup_marker.txt", "1234567890")
-        ZipInputStream(source.inputStream()).use { zip ->
+        ZipInputStream(ByteArrayInputStream(source.toByteArray())).use { zip ->
             zip.nextEntry
             try {
                 invokeByteArray("readEntryLimited", zip, 5L)
