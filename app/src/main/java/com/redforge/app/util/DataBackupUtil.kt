@@ -87,7 +87,7 @@ object DataBackupUtil {
     }
 
     fun isValidBackup(context: Context, uri: Uri): Boolean = try {
-        context.contentResolver.openInputStream(uri)?.use { input ->
+        context.contentResolver.openInputStream(uri)?.use input@ { input ->
             ZipInputStream(input).use { zip ->
                 var total = 0L
                 var markerFound = false
@@ -99,7 +99,7 @@ object DataBackupUtil {
                     when (entry.name) {
                         MARKER_ENTRY -> {
                             val bytes = readEntryLimited(zip, MAX_ENTRY_BYTES)
-                            if (!isSupportedMarker(bytes.toString(Charsets.UTF_8))) return@use false
+                            if (!isSupportedMarker(bytes.toString(Charsets.UTF_8))) return@input false
                             markerFound = true
                             total += bytes.size
                         }
@@ -109,7 +109,7 @@ object DataBackupUtil {
                         }
                         else -> total += skipEntry(zip)
                     }
-                    if (total > MAX_BACKUP_UNCOMPRESSED_BYTES) return@use false
+                    if (total > MAX_BACKUP_UNCOMPRESSED_BYTES) return@input false
                     entry = zip.nextEntry
                 }
                 markerFound && databaseFound
