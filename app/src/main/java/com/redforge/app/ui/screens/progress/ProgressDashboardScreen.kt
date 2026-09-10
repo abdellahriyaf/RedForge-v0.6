@@ -5,10 +5,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Straighten
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -112,7 +112,7 @@ private fun ExerciseProgressCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "View trend")
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "View trend")
         }
 
         Spacer(Modifier.height(8.dp))
@@ -146,7 +146,7 @@ private fun ExerciseProgressCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val positive = summary.volumeChangePercent >= 0
                     Icon(
-                        if (positive) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
+                        if (positive) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
                         contentDescription = null,
                         tint = if (positive) ForgeGreen else ForgeRedBright,
                         modifier = Modifier.size(18.dp)
