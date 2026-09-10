@@ -1,5 +1,6 @@
 package com.redforge.app.data.repository
 
+import com.redforge.app.data.local.dao.HistorySessionStats
 import com.redforge.app.data.local.dao.WorkoutDao
 import com.redforge.app.data.local.entities.SetEntry
 import com.redforge.app.data.local.entities.WorkoutSession
@@ -44,6 +45,10 @@ class WorkoutRepository(private val dao: WorkoutDao) {
 
     fun observeSets(sessionId: Long): Flow<List<SetEntry>> = dao.observeSetsForSession(sessionId)
     suspend fun getSetsOnce(sessionId: Long) = dao.getSetsForSessionOnce(sessionId)
+
+    /** One SQL projection drives the history list without per-session queries. */
+    fun observeCompletedHistoryStats(): Flow<List<HistorySessionStats>> =
+        dao.observeCompletedHistoryStats()
 
     /** Writes one set immediately; callers should never batch set logging in memory. */
     suspend fun logSet(set: SetEntry): Long = dao.upsertSet(set)
