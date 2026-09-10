@@ -9,7 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -246,7 +246,7 @@ private fun VolumeTemplate(summary: ShareSummary) {
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
             Icon(
-                Icons.Filled.ShowChart,
+                Icons.AutoMirrored.Filled.ShowChart,
                 contentDescription = null,
                 tint = ForgeGold,
                 modifier = Modifier.size(42.dp)
