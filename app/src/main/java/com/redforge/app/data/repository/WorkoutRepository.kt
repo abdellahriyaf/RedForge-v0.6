@@ -1,5 +1,8 @@
 package com.redforge.app.data.repository
 
+import com.redforge.app.data.local.dao.ExerciseProgressSet
+import com.redforge.app.data.local.dao.HistorySessionStats
+import com.redforge.app.data.local.dao.SetStats
 import com.redforge.app.data.local.dao.WorkoutDao
 import com.redforge.app.data.local.entities.SetEntry
 import com.redforge.app.data.local.entities.WorkoutSession
@@ -11,10 +14,16 @@ class WorkoutRepository(private val dao: WorkoutDao) {
     suspend fun getInProgressSession(): WorkoutSession? = dao.getInProgressSession()
 
     fun observeAllSessions(): Flow<List<WorkoutSession>> = dao.observeAllSessions()
+    fun observeCompletedSessions(): Flow<List<WorkoutSession>> = dao.observeCompletedSessions()
+    fun observeCompletedHistoryStats(): Flow<List<HistorySessionStats>> = dao.observeCompletedHistoryStats()
+    fun observeAllWorkingSets(): Flow<List<SetEntry>> = dao.observeAllWorkingSets()
+
     suspend fun getSessionsBetween(from: Long, to: Long) = dao.getSessionsBetween(from, to)
+    suspend fun getCompletedSessionsBetween(from: Long, to: Long) = dao.getCompletedSessionsBetween(from, to)
+    suspend fun hasCompletedSessionBetween(from: Long, to: Long) = dao.hasCompletedSessionBetween(from, to)
+    suspend fun getSetStatsBetween(from: Long, to: Long): SetStats = dao.getSetStatsBetween(from, to)
     suspend fun getSession(id: Long) = dao.getSession(id)
 
-    /** Creates and immediately persists a new session — exists on disk before any set is logged. */
     suspend fun startSession(splitDayId: Long?, splitDayName: String): Long =
         dao.upsertSession(WorkoutSession(splitDayId = splitDayId, splitDayNameSnapshot = splitDayName))
 
@@ -24,14 +33,7 @@ class WorkoutRepository(private val dao: WorkoutDao) {
     fun observeSets(sessionId: Long): Flow<List<SetEntry>> = dao.observeSetsForSession(sessionId)
     suspend fun getSetsOnce(sessionId: Long) = dao.getSetsForSessionOnce(sessionId)
 
-    /**
-     * The single most important call in the data layer: writes one set to
-     * Room synchronously with the suspend call site (a Room coroutine call
-     * commits before returning). Callers should invoke this the instant a
-     * set is confirmed — never batch sets in memory to write "later".
-     */
     suspend fun logSet(set: SetEntry): Long = dao.upsertSet(set)
-
     suspend fun updateSet(set: SetEntry) = dao.updateSet(set)
     suspend fun deleteSet(set: SetEntry) = dao.deleteSet(set)
 
@@ -39,7 +41,6 @@ class WorkoutRepository(private val dao: WorkoutDao) {
         dao.getMaxSetIndex(sessionId, exerciseId)
 
     suspend fun convertAllSetWeights(factor: Double) = dao.scaleAllWeights(factor)
-
     suspend fun deleteSetAndReindex(set: SetEntry) = dao.deleteSetAndReindex(set)
 
     suspend fun getRecentSetsForExercise(exerciseId: Long, limit: Int = 50) =
@@ -47,4 +48,13 @@ class WorkoutRepository(private val dao: WorkoutDao) {
 
     fun observeAllSetsForExercise(exerciseId: Long): Flow<List<SetEntry>> =
         dao.observeAllSetsForExercise(exerciseId)
+
+    suspend fun getCompletedSetsForExercise(exerciseId: Long): List<ExerciseProgressSet> =
+        dao.getCompletedSetsForExercise(exerciseId)
+
+    suspend fun getBestEstimated1RMForExercise(exerciseId: Long): Double? =
+        dao.getBestEstimated1RMForExercise(exerciseId)
+
+    suspend fun getLatestCompletedSetForExercise(exerciseId: Long): SetEntry? =
+        dao.getLatestCompletedSetForExercise(exerciseId)
 }
