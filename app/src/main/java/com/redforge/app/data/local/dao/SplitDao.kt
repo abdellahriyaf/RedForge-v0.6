@@ -16,6 +16,9 @@ interface SplitDao {
     fun observeActiveSplit(): Flow<Split?>
 
     @Query("SELECT * FROM splits WHERE id = :id")
+    fun observeSplit(id: Long): Flow<Split?>
+
+    @Query("SELECT * FROM splits WHERE id = :id")
     suspend fun getSplit(id: Long): Split?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -24,18 +27,26 @@ interface SplitDao {
     @Delete
     suspend fun deleteSplit(split: Split)
 
-    /** Clears the active flag on every split — call before setting a new active one. */
     @Query("UPDATE splits SET isActive = 0")
     suspend fun clearActiveFlag()
 
     @Query("UPDATE splits SET isActive = 1, updatedAt = :now WHERE id = :splitId")
     suspend fun markActive(splitId: Long, now: Long = System.currentTimeMillis())
 
+    @Transaction
+    suspend fun activateSplit(splitId: Long, now: Long = System.currentTimeMillis()) {
+        clearActiveFlag()
+        markActive(splitId, now)
+    }
+
     @Query("SELECT * FROM split_days WHERE splitId = :splitId ORDER BY dayOrder ASC")
     fun observeDaysForSplit(splitId: Long): Flow<List<SplitDay>>
 
     @Query("SELECT * FROM split_days WHERE splitId = :splitId ORDER BY dayOrder ASC")
     suspend fun getDaysOnce(splitId: Long): List<SplitDay>
+
+    @Query("SELECT * FROM split_days WHERE id = :id")
+    fun observeDay(id: Long): Flow<SplitDay?>
 
     @Query("SELECT * FROM split_days WHERE id = :id")
     suspend fun getDay(id: Long): SplitDay?
@@ -55,11 +66,39 @@ interface SplitDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertDayExercise(entry: SplitDayExercise): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertDayExercises(entries: List<SplitDayExercise>): List<Long>
+
     @Delete
     suspend fun deleteDayExercise(entry: SplitDayExercise)
 
     @Query("DELETE FROM split_day_exercises WHERE splitDayId = :dayId")
     suspend fun clearExercisesForDay(dayId: Long)
+
+    @Query("DELETE FROM split_day_exercises WHERE splitDayId IN (SELECT id FROM split_days WHERE splitId = :splitId)")
+    suspend fun clearExercisesForSplit(splitId: Long)
+
+    @Query("DELETE FROM split_days WHERE splitId = :splitId")
+    suspend fun clearDaysForSplit(splitId: Long)
+
+    @Transaction
+    suspend fun replaceDayExercises(dayId: Long, entries: List<SplitDayExercise>) {
+        clearExercisesForDay(dayId)
+        if (entries.isNotEmpty()) upsertDayExercises(entries)
+    }
+
+    @Transaction
+    suspend fun deleteDayWithExercises(day: SplitDay) {
+        clearExercisesForDay(day.id)
+        deleteDay(day)
+    }
+
+    @Transaction
+    suspend fun deleteSplitWithChildren(split: Split) {
+        clearExercisesForSplit(split.id)
+        clearDaysForSplit(split.id)
+        deleteSplit(split)
+    }
 
     @Query("SELECT COUNT(*) FROM split_days WHERE splitId = :splitId")
     suspend fun countDays(splitId: Long): Int
