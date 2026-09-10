@@ -1,6 +1,7 @@
 package com.redforge.app.data.local.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
@@ -8,23 +9,27 @@ import androidx.room.PrimaryKey
  * Exactly one split should have [isActive] = true at a time — that's the
  * one shown on the Home screen and used for streak calculation.
  */
-@Entity(tableName = "splits")
+@Entity(
+    tableName = "splits",
+    indices = [
+        Index(value = ["isActive"]),
+        Index(value = ["updatedAt"])
+    ]
+)
 data class Split(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val isActive: Boolean = false,
-    val daysPerCycle: Int = 0, // denormalized count, kept in sync by the repository
-    val isDeloadCycle: Boolean = false, // when true, Active Workout scales displayed target sets down
+    val daysPerCycle: Int = 0,
+    val isDeloadCycle: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )
 
-/**
- * One day within a split's cycle (e.g. "Push Day", "Leg Day", "Rest Day").
- * [dayOrder] defines the sequence the days repeat in (1, 2, 3, ... then back
- * to 1). A day with no exercises attached is treated as a rest day.
- */
-@Entity(tableName = "split_days")
+@Entity(
+    tableName = "split_days",
+    indices = [Index(value = ["splitId", "dayOrder"])]
+)
 data class SplitDay(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val splitId: Long,
@@ -33,17 +38,10 @@ data class SplitDay(
     val isRestDay: Boolean = false
 )
 
-/**
- * An exercise placed inside a split day, with the day-specific prescription
- * (target sets/reps/rest). The exercise itself lives in [Exercise] so it can
- * be reused and edited across many split days.
- *
- * [supersetGroup] links two or more exercises within the same day into a
- * superset/circuit: exercises sharing the same non-null group id are
- * performed back-to-back, with the rest timer only firing after the last
- * exercise in the group rather than after every single one.
- */
-@Entity(tableName = "split_day_exercises")
+@Entity(
+    tableName = "split_day_exercises",
+    indices = [Index(value = ["splitDayId", "orderIndex"])]
+)
 data class SplitDayExercise(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val splitDayId: Long,
