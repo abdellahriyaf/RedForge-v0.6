@@ -33,46 +33,48 @@ object DataBackupUtil {
     private const val MAX_ENTRY_BYTES = 100L * 1024L * 1024L
     private const val MAX_BACKUP_UNCOMPRESSED_BYTES = 250L * 1024L * 1024L
 
-    fun exportBackup(context: Context): Uri? = try {
-        val db = RedForgeDatabase.getInstance(context)
-        if (!db.isOpen) return null
+    fun exportBackup(context: Context): Uri? {
+        return try {
+            val db = RedForgeDatabase.getInstance(context)
+            if (!db.isOpen) return null
 
-        db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)").use { }
+            db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)").use { }
 
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val exportDir = File(context.cacheDir, "share").apply { mkdirs() }
-        val zipFile = File(exportDir, "redforge_backup_$timestamp.zip")
-        val dbFile = context.getDatabasePath("redforge.db")
-        if (!dbFile.isFile) return null
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+            val exportDir = File(context.cacheDir, "share").apply { mkdirs() }
+            val zipFile = File(exportDir, "redforge_backup_$timestamp.zip")
+            val dbFile = context.getDatabasePath("redforge.db")
+            if (!dbFile.isFile) return null
 
-        ZipOutputStream(FileOutputStream(zipFile)).use { zip ->
-            writeTextEntry(
-                zip,
-                MARKER_ENTRY,
-                "RedForge backup|format=$BACKUP_FORMAT_VERSION|created=$timestamp"
-            )
-            addFileToZip(zip, dbFile, DB_ENTRY)
+            ZipOutputStream(FileOutputStream(zipFile)).use { zip ->
+                writeTextEntry(
+                    zip,
+                    MARKER_ENTRY,
+                    "RedForge backup|format=$BACKUP_FORMAT_VERSION|created=$timestamp"
+                )
+                addFileToZip(zip, dbFile, DB_ENTRY)
 
-            val prefsFile = File(
-                context.filesDir.parentFile,
-                "datastore/redforge_settings.preferences_pb"
-            )
-            if (prefsFile.isFile) addFileToZip(zip, prefsFile, PREFS_ENTRY)
+                val prefsFile = File(
+                    context.filesDir.parentFile,
+                    "datastore/redforge_settings.preferences_pb"
+                )
+                if (prefsFile.isFile) addFileToZip(zip, prefsFile, PREFS_ENTRY)
 
-            val photosDir = File(context.filesDir, "progress_photos")
-            photosDir.listFiles()?.filter { it.isFile }?.forEach { photo ->
-                val safeName = photo.name.replace("/", "_").replace("\\", "_")
-                addFileToZip(zip, photo, PHOTOS_ENTRY_PREFIX + safeName)
+                val photosDir = File(context.filesDir, "progress_photos")
+                photosDir.listFiles()?.filter { it.isFile }?.forEach { photo ->
+                    val safeName = photo.name.replace("/", "_").replace("\\", "_")
+                    addFileToZip(zip, photo, PHOTOS_ENTRY_PREFIX + safeName)
+                }
             }
-        }
 
-        FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            zipFile
-        )
-    } catch (_: Exception) {
-        null
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                zipFile
+            )
+        } catch (_: Exception) {
+            null
+        }
     }
 
     fun shareBackup(context: Context, uri: Uri) {
