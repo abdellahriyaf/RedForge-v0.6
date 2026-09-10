@@ -11,9 +11,9 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -64,9 +64,7 @@ fun RedForgeApp(openWorkoutOnLaunch: Boolean = false) {
 
     Scaffold(
         bottomBar = {
-            if (currentRoute in bottomNavRoutes) {
-                RedForgeBottomBar(navController)
-            }
+            if (currentRoute in bottomNavRoutes) RedForgeBottomBar(navController)
         }
     ) { padding ->
         NavHost(
@@ -76,7 +74,7 @@ fun RedForgeApp(openWorkoutOnLaunch: Boolean = false) {
         ) {
             composable(NavRoutes.SPLASH) {
                 val vm: OnboardingViewModel = redForgeViewModel { app -> OnboardingViewModel(app.settingsDataStore) }
-                val settings by vm.forgeSettings.collectAsState()
+                val settings by vm.forgeSettings.collectAsStateWithLifecycle()
                 SplashScreen(onFinished = {
                     val destination = navigateAfterSplash(navController, settings)
                     if (openWorkoutOnLaunch && destination == NavRoutes.HOME) {
@@ -112,20 +110,14 @@ fun RedForgeApp(openWorkoutOnLaunch: Boolean = false) {
             composable(NavRoutes.HISTORY) {
                 HistoryScreen(onOpenSession = { id -> navController.navigate(NavRoutes.historyDetail(id)) })
             }
-            composable(
-                NavRoutes.HISTORY_DETAIL,
-                arguments = listOf(navArgument("sessionId") { type = NavType.LongType })
-            ) { entry ->
+            composable(NavRoutes.HISTORY_DETAIL, arguments = listOf(navArgument("sessionId") { type = NavType.LongType })) { entry ->
                 val sessionId = entry.arguments?.getLong("sessionId") ?: 0L
                 HistoryDetailScreen(sessionId = sessionId, onBack = { navController.popBackStack() })
             }
             composable(NavRoutes.SPLIT_LIST) {
                 SplitListScreen(onOpenSplit = { id -> navController.navigate(NavRoutes.splitEditor(id)) })
             }
-            composable(
-                NavRoutes.SPLIT_EDITOR,
-                arguments = listOf(navArgument("splitId") { type = NavType.LongType })
-            ) { entry ->
+            composable(NavRoutes.SPLIT_EDITOR, arguments = listOf(navArgument("splitId") { type = NavType.LongType })) { entry ->
                 val splitId = entry.arguments?.getLong("splitId") ?: 0L
                 SplitEditorScreen(
                     splitId = splitId,
@@ -133,14 +125,11 @@ fun RedForgeApp(openWorkoutOnLaunch: Boolean = false) {
                     onBack = { navController.popBackStack() }
                 )
             }
-            composable(
-                NavRoutes.SPLIT_DAY_EDITOR,
-                arguments = listOf(navArgument("dayId") { type = NavType.LongType })
-            ) { entry ->
+            composable(NavRoutes.SPLIT_DAY_EDITOR, arguments = listOf(navArgument("dayId") { type = NavType.LongType })) { entry ->
                 val dayId = entry.arguments?.getLong("dayId") ?: 0L
                 val pickedExerciseId by entry.savedStateHandle
                     .getStateFlow<Long?>("picked_exercise_id", null)
-                    .collectAsState()
+                    .collectAsStateWithLifecycle()
                 SplitDayEditorScreen(
                     dayId = dayId,
                     pickedExerciseId = pickedExerciseId,
@@ -149,18 +138,11 @@ fun RedForgeApp(openWorkoutOnLaunch: Boolean = false) {
                     onBack = { navController.popBackStack() }
                 )
             }
-            composable(
-                NavRoutes.EXERCISE_LIBRARY,
-                arguments = listOf(navArgument("pickerMode") { type = NavType.BoolType })
-            ) { entry ->
+            composable(NavRoutes.EXERCISE_LIBRARY, arguments = listOf(navArgument("pickerMode") { type = NavType.BoolType })) { entry ->
                 val pickerMode = entry.arguments?.getBoolean("pickerMode") ?: false
                 ExerciseLibraryScreen(
                     pickerMode = pickerMode,
                     onPick = { exercise ->
-                        // The previous entry (day editor) owns adding it — simplest robust approach
-                        // without a shared ViewModel is to pop back and let the day editor's own
-                        // FAB flow re-trigger; here we directly add via the day editor's ViewModel
-                        // by popping back with a result.
                         navController.previousBackStackEntry?.savedStateHandle?.set("picked_exercise_id", exercise.id)
                         navController.popBackStack()
                     },
@@ -169,21 +151,11 @@ fun RedForgeApp(openWorkoutOnLaunch: Boolean = false) {
                     onCreateNew = { navController.navigate(NavRoutes.exerciseEditor(0L)) }
                 )
             }
-            composable(
-                NavRoutes.EXERCISE_EDITOR,
-                arguments = listOf(navArgument("exerciseId") { type = NavType.LongType })
-            ) { entry ->
+            composable(NavRoutes.EXERCISE_EDITOR, arguments = listOf(navArgument("exerciseId") { type = NavType.LongType })) { entry ->
                 val exerciseId = entry.arguments?.getLong("exerciseId") ?: 0L
-                ExerciseEditorScreen(
-                    exerciseId = exerciseId,
-                    onSaved = { navController.popBackStack() },
-                    onBack = { navController.popBackStack() }
-                )
+                ExerciseEditorScreen(exerciseId = exerciseId, onSaved = { navController.popBackStack() }, onBack = { navController.popBackStack() })
             }
-            composable(
-                NavRoutes.EXERCISE_DETAIL,
-                arguments = listOf(navArgument("exerciseId") { type = NavType.LongType })
-            ) { entry ->
+            composable(NavRoutes.EXERCISE_DETAIL, arguments = listOf(navArgument("exerciseId") { type = NavType.LongType })) { entry ->
                 val exerciseId = entry.arguments?.getLong("exerciseId") ?: 0L
                 ExerciseDetailScreen(
                     exerciseId = exerciseId,
@@ -195,11 +167,7 @@ fun RedForgeApp(openWorkoutOnLaunch: Boolean = false) {
                 ActiveWorkoutScreen(
                     onFinished = {
                         val returnedToHome = navController.popBackStack(NavRoutes.HOME, false)
-                        if (!returnedToHome) {
-                            navController.navigate(NavRoutes.HOME) {
-                                launchSingleTop = true
-                            }
-                        }
+                        if (!returnedToHome) navController.navigate(NavRoutes.HOME) { launchSingleTop = true }
                     },
                     onBack = { navController.popBackStack() }
                 )
@@ -211,20 +179,14 @@ fun RedForgeApp(openWorkoutOnLaunch: Boolean = false) {
                     onOpenExercise = { id -> navController.navigate(NavRoutes.exerciseProgress(id)) }
                 )
             }
-            composable(
-                NavRoutes.EXERCISE_PROGRESS,
-                arguments = listOf(navArgument("exerciseId") { type = NavType.LongType })
-            ) { entry ->
+            composable(NavRoutes.EXERCISE_PROGRESS, arguments = listOf(navArgument("exerciseId") { type = NavType.LongType })) { entry ->
                 val exerciseId = entry.arguments?.getLong("exerciseId") ?: 0L
                 ExerciseProgressDetailScreen(exerciseId = exerciseId, onBack = { navController.popBackStack() })
             }
             composable(NavRoutes.PHOTO_TRACKING) { PhotoTrackingScreen() }
             composable(NavRoutes.BODY_MEASUREMENTS) { BodyMeasurementScreen() }
             composable(NavRoutes.SETTINGS) { SettingsScreen() }
-            composable(
-                NavRoutes.SHARE_RESULT,
-                arguments = listOf(navArgument("scope") { type = NavType.StringType })
-            ) { entry ->
+            composable(NavRoutes.SHARE_RESULT, arguments = listOf(navArgument("scope") { type = NavType.StringType })) { entry ->
                 val scope = ShareScope.valueOf(entry.arguments?.getString("scope") ?: ShareScope.DAY.name)
                 ShareResultScreen(initialScope = scope)
             }
@@ -248,38 +210,16 @@ private fun RedForgeBottomBar(navController: NavHostController) {
     val currentRoute = backStackEntry?.destination?.route
 
     NavigationBar {
+        NavigationBarItem(selected = currentRoute == NavRoutes.HOME, onClick = { navController.navigateBottom(NavRoutes.HOME) }, icon = { Icon(Icons.Filled.Home, contentDescription = "Home") }, label = { Text("Home") })
+        NavigationBarItem(selected = currentRoute == NavRoutes.HISTORY, onClick = { navController.navigateBottom(NavRoutes.HISTORY) }, icon = { Icon(Icons.Filled.History, contentDescription = "History") }, label = { Text("History") })
+        NavigationBarItem(selected = currentRoute == NavRoutes.SPLIT_LIST, onClick = { navController.navigateBottom(NavRoutes.SPLIT_LIST) }, icon = { Icon(Icons.Filled.FitnessCenter, contentDescription = "Splits") }, label = { Text("Splits") })
         NavigationBarItem(
-            selected = currentRoute == NavRoutes.HOME,
-            onClick = { navController.navigateBottom(NavRoutes.HOME) },
-            icon = { Icon(Icons.Filled.Home, contentDescription = "Home") },
-            label = { Text("Home") }
-        )
-        NavigationBarItem(
-            selected = currentRoute == NavRoutes.HISTORY,
-            onClick = { navController.navigateBottom(NavRoutes.HISTORY) },
-            icon = { Icon(Icons.Filled.History, contentDescription = "History") },
-            label = { Text("History") }
-        )
-        NavigationBarItem(
-            selected = currentRoute == NavRoutes.SPLIT_LIST,
-            onClick = { navController.navigateBottom(NavRoutes.SPLIT_LIST) },
-            icon = { Icon(Icons.Filled.FitnessCenter, contentDescription = "Splits") },
-            label = { Text("Splits") }
-        )
-        NavigationBarItem(
-            selected = currentRoute == NavRoutes.PROGRESS_DASHBOARD ||
-                currentRoute == NavRoutes.PHOTO_TRACKING ||
-                currentRoute == NavRoutes.BODY_MEASUREMENTS,
+            selected = currentRoute == NavRoutes.PROGRESS_DASHBOARD || currentRoute == NavRoutes.PHOTO_TRACKING || currentRoute == NavRoutes.BODY_MEASUREMENTS,
             onClick = { navController.navigateBottom(NavRoutes.PROGRESS_DASHBOARD) },
             icon = { Icon(Icons.Filled.InsertChartOutlined, contentDescription = "Progress") },
             label = { Text("Progress") }
         )
-        NavigationBarItem(
-            selected = currentRoute == NavRoutes.SETTINGS,
-            onClick = { navController.navigateBottom(NavRoutes.SETTINGS) },
-            icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
-            label = { Text("Settings") }
-        )
+        NavigationBarItem(selected = currentRoute == NavRoutes.SETTINGS, onClick = { navController.navigateBottom(NavRoutes.SETTINGS) }, icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") }, label = { Text("Settings") })
     }
 }
 
