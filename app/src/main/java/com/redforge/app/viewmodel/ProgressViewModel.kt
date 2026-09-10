@@ -7,8 +7,10 @@ import com.redforge.app.data.local.entities.SetEntry
 import com.redforge.app.data.repository.ExerciseRepository
 import com.redforge.app.data.repository.WorkoutRepository
 import com.redforge.app.domain.formulas.StrengthFormulas
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+
 
 data class ExerciseProgressSummary(
     val exercise: Exercise,
@@ -30,31 +32,34 @@ class ProgressViewModel(
     private val workoutRepository: WorkoutRepository
 ) : ViewModel() {
 
-    val summaries: StateFlow<List<ExerciseProgressSummary>> = exerciseRepository.observeAll()
-        .flatMapLatest { exercises ->
-            if (exercises.isEmpty()) flowOf(emptyList())
-            else combine(exercises.map { ex -> workoutRepository.observeAllSetsForExercise(ex.id).map { ex to it } }) { pairs ->
-                pairs.mapNotNull { (ex, sets) -> buildSummary(ex, sets) }
-                    .sortedByDescending { it.totalVolumeAllTime }
-            }
-        }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val summaries: StateFlow<List<ExerciseProgressSummary>> = combine(
+        exerciseRepository.observeAll(),
+        workoutRepository.observeAllWorkingSets()
+    ) { exercises, allWorkingSets ->
+        val setsByExercise = allWorkingSets.groupBy { it.exerciseId }
+        exercises.mapNotNull { exercise ->
+            buildSummary(exercise, setsByExercise[exercise.id].orEmpty())
+        }.sortedByDescending { it.totalVolumeAllTime }
+    }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private fun buildSummary(exercise: Exercise, sets: List<SetEntry>): ExerciseProgressSummary? {
         if (sets.isEmpty()) return null
         val sorted = sets.sortedBy { it.loggedAt }
         val midpoint = sorted.size / 2
-        val earlierHalf = sorted.take(maxOf(midpoint, 1))
-        val recentHalf = sorted.drop(midpoint)
+        val splitPoint = maxOf(midpoint, 1)
+        val earlierHalf = sorted.take(splitPoint)
+        val recentHalf = sorted.drop(midpoint).ifEmpty { earlierHalf }
         val volumeChange = StrengthFormulas.percentChange(
             StrengthFormulas.totalVolume(earlierHalf),
-            StrengthFormulas.totalVolume(recentHalf.ifEmpty { earlierHalf })
+            StrengthFormulas.totalVolume(recentHalf)
         )
-        val sessionCount = sorted.map { it.workoutSessionId }.distinct().size
+        val sessionCount = sorted.asSequence().map { it.workoutSessionId }.distinct().count()
         return ExerciseProgressSummary(
             exercise = exercise,
-            bestEstimated1RM = StrengthFormulas.displayRounded(StrengthFormulas.bestEstimated1RM(sets.filter { !it.isWarmup })),
-            totalVolumeAllTime = StrengthFormulas.displayRounded(StrengthFormulas.totalVolume(sets.filter { !it.isWarmup })),
+            bestEstimated1RM = StrengthFormulas.displayRounded(StrengthFormulas.bestEstimated1RM(sets)),
+            totalVolumeAllTime = StrengthFormulas.displayRounded(StrengthFormulas.totalVolume(sets)),
             volumeChangePercent = volumeChange,
             sessionCount = sessionCount
         )
@@ -80,31 +85,22 @@ class ExerciseProgressDetailViewModel(
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            load()
-        }
+        viewModelScope.launch { load() }
     }
 
     private suspend fun load() {
         val exercise = exerciseRepository.getById(exerciseId)
         if (exercise == null) {
-            _uiState.value = UiState(
-                loading = false,
-                error = "Exercise not found."
-            )
+            _uiState.value = UiState(loading = false, error = "Exercise not found.")
             return
         }
 
-        val sessions = workoutRepository.observeAllSessions().first()
-            .filter { it.completed }
+        val sessions = workoutRepository.getCompletedSessionsBetween(0L, Long.MAX_VALUE)
             .associateBy { it.id }
-
-        val sets = workoutRepository.observeAllSetsForExercise(exerciseId).first()
-            .filter { sessions.containsKey(it.workoutSessionId) }
-            .filter { !it.isWarmup }
+        val groupedSets = workoutRepository.getCompletedSetsForExercise(exerciseId)
             .groupBy { it.workoutSessionId }
 
-        val points = sets.mapNotNull { (sessionId, sessionSets) ->
+        val points = groupedSets.mapNotNull { (sessionId, sessionSets) ->
             val session = sessions[sessionId] ?: return@mapNotNull null
             ExerciseTrendPoint(
                 sessionId = sessionId,
@@ -113,7 +109,7 @@ class ExerciseProgressDetailViewModel(
                     StrengthFormulas.bestEstimated1RM(sessionSets)
                 ),
                 volume = StrengthFormulas.displayRounded(
-                    StrengthFormulas.totalVolume(sessionSets)
+                    sessionSets.sumOf { it.weight * it.reps }
                 )
             )
         }.sortedBy { it.date }
