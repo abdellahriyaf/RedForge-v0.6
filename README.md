@@ -1,57 +1,49 @@
-# RedForge v0.5
+# RedForge v0.6.1
 
-A local-first bodybuilding progress tracker for Android. Built with Kotlin,
-Jetpack Compose, and Room. No account, no server, and no network permission in
-v0.5.
+A local-first bodybuilding and workout progress tracker for Android. Built with Kotlin, Jetpack Compose, Room, and DataStore.
 
-## v0.5 identity and side-by-side testing
+## Current release
 
-**v0.4 is intentionally preserved as a separate app.** v0.4 uses application
-ID `com.redforge.app.v04`; v0.5 uses `com.redforge.app.v05` and version `0.5.0`.
-Android therefore treats them as two independent installs, so you can keep both
-for direct comparison. v0.5 has its own local database and settings on a fresh
-install. Nothing in v0.5 modifies the data stored by v0.4.
+**RedForge v0.6.1** is the optimization and hardening release on top of v0.6.
 
-To compare with the same workout history, export a backup from v0.4 and import
-it into v0.5. The existing backup/restore path remains local and explicit.
+- Application ID: `com.redforge.app.v06`
+- Version: `0.6.1`
+- versionCode: `7`
+- v0.6.1 keeps the local-first model and does not add a network/backend layer.
 
-## What changed in v0.5
+## v0.6 foundation
 
-### History
-- History rows are tappable and open a full workout detail screen.
-- Completed sessions show exercise-by-exercise set history.
-- Past sets can be edited for weight, reps, and RPE.
-- Past sets can be deleted with confirmation and remaining set numbers are renumbered.
-- Warm-up sets remain visible but are excluded from working-set volume summaries.
+v0.6 expands the exercise system into a curated catalog with searchable aliases, muscle/equipment/movement metadata, technique instructions, key cues, common mistakes, difficulty, rep ranges, and source metadata. Custom exercises remain supported.
 
-### Progress
-- Each lift progress card opens a dedicated trend screen.
-- Users can switch between estimated 1RM and per-session volume.
-- The chart and recent-session list are derived from the local Room history.
-- Warm-ups are excluded from e1RM and working-volume metrics.
+History and progress screens use the same persisted Room session/set data as the workout flow. Backup and restore remain explicit user actions.
 
-### Sharing
-- Added Summary, Streak, and Volume share-card templates.
-- Shared image filenames include template + time range.
-- Share totals focus on actual working sets and working volume.
+Strong Ember demonstrations are intentionally deferred to v0.7.
+Gemini integration is intentionally deferred to v0.8.
 
-### Widget
-- Today's state now distinguishes training complete, rest day, and a startable session.
-- Added a one-tap START action for a startable training day.
-- OPEN remains available even when today's action is unavailable.
+## v0.6.1 optimization and hardening
 
-### Existing v0.4 foundation retained
-- Local Room persistence and data-loss protection
-- Calendar-based scheduling and distinct-day streaks
-- Deload and superset behavior
-- Camera/photo tracking and bottom navigation on progress subpages
-- Hardened backup/export/import
-- Home media controls and Spotify launcher
-- Dark theme and timer settings
+### Performance
+- Added database indexes for the high-frequency session, set, split, exercise, photo, and measurement queries.
+- Replaced several read-heavy paths with SQL aggregates, projections, and targeted queries.
+- Reduced repeated work in history, progress, sharing, and home statistics.
+- Cached completed exercise-history lookups used by active-workout PR detection so the 1,000-row history window is not re-read from Room on every set tap.
+- Reduced avoidable allocations in strength/volume calculations.
+- Moved progress-photo filesystem copying to an IO dispatcher.
+- Enabled Gradle build caching, configuration cache, and Kotlin incremental compilation.
+
+### Data safety
+- Kept real additive Room migrations rather than destructive fallback migration.
+- Added migration regression tests for the v1 -> v2 -> v3 -> v4 chain.
+- Backup/restore validation keeps archive allowlisting, size limits, SQLite header validation, staging, and rollback.
+- Restore still requires an explicit confirmation before replacing live data.
+
+### Engineering quality
+- Added `.gitignore` for Android build outputs, local properties, IDE files, and local secrets.
+- Added GitHub Actions CI running build, unit tests, and Android lint on pushes and pull requests.
+- Added unit coverage for core strength/volume formulas and migration statements.
+- Kept settings screen scrolling and lifecycle-aware Compose state collection.
 
 ## Architecture
-
-The domain/data/UI separation remains intentionally manual and approachable:
 
 ```text
 UI / Compose
@@ -63,37 +55,20 @@ Repository
 Room / DataStore
 ```
 
-History and progress detail screens read the same persisted set/session rows as
-the rest of the app, so there is no secondary history database.
+The repository layer intentionally stays thin; business rules remain in ViewModels/domain code while persistence stays in Room/DataStore.
 
 ## Privacy
 
-v0.5 remains local-first. Workout data, settings, measurements, and progress
-photos stay on the device unless the user explicitly exports a backup. There
-is no Gemini/network layer in v0.5.
+RedForge remains local-first in v0.6.1. Workout data, settings, measurements, and progress photos stay on the device unless the user explicitly exports a backup. There is no Gemini/network layer in this release.
 
-## Known limitations / next steps
+## Release roadmap
 
-- The Android SDK/Gradle wrapper binary is not available in this preparation
-environment, so the final compile and device test must still be done in
-Android Studio.
-- The exercise library still contains the small seeded set; v0.6 is the
-planned expansion to a much richer catalog with structured metadata and
-licensed/original demonstrations.
-- Final Cute Ember animation work is planned for v0.7.
-- Gemini is planned for v0.8.
+- v0.7 — Cute Ember + Strong Ember / exercise demonstration system
+- v0.8 — Gemini integration
+- Then bug fixes, polish, and final improvements toward v1
 
-## App identity
+## Development
 
-| Build | Application ID | Version |
-|---|---|---|
-| RedForge v0.3 | `com.redforge.app` | legacy baseline |
-| RedForge v0.4 | `com.redforge.app.v04` | 0.4.0 |
-| **RedForge v0.5** | **`com.redforge.app.v05`** | **0.5.0** |
-```
+Open the repository in Android Studio and work from the release branch you intend to test. The `main` branch is kept as the stable baseline; release work can be tested on its corresponding version branch.
 
-## v0.6 — Exercise Library Expansion
-
-v0.6 expands RedForge's exercise system to a curated 100+ exercise catalog with searchable aliases, muscle/equipment/movement metadata, technique instructions, key cues, common mistakes, difficulty and typical rep/time ranges. The library and custom exercise editor are designed to remain offline-first.
-
-Exercise demonstration media is intentionally deferred to v0.7, where Strong Ember will become the visual trainer. The v0.6 schema already reserves a demonstration asset field so the later system can attach media without redesigning the core exercise model.
+GitHub Actions provides the automated build/test/lint gate for changes pushed to the repository.
