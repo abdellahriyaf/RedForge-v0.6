@@ -6,8 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.redforge.app.navigation.RedForgeApp
 import com.redforge.app.ui.theme.RedForgeTheme
 
@@ -16,7 +16,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val app = application as RedForgeApplication
         setContent {
-            val settings by app.settingsDataStore.settingsFlow.collectAsState(initial = com.redforge.app.data.datastore.ForgeSettings())
+            val settings by app.settingsDataStore.settingsFlow.collectAsStateWithLifecycle(
+                initialValue = com.redforge.app.data.datastore.ForgeSettings()
+            )
             RedForgeTheme(forceDark = settings.darkThemeForced) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     RedForgeApp(openWorkoutOnLaunch = intent.getBooleanExtra("start_workout", false))
