@@ -1,7 +1,9 @@
 package com.redforge.app.service
 
+import android.Manifest
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.CountDownTimer
 import android.os.IBinder
 import android.os.VibrationEffect
@@ -10,6 +12,7 @@ import android.media.AudioManager
 import android.media.ToneGenerator
 import com.redforge.app.data.datastore.SettingsDataStore
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.CoroutineScope
@@ -136,6 +139,13 @@ class RestTimerService : Service() {
     }
 
     private fun updateNotification(secondsRemaining: Int, isPaused: Boolean) {
+        if (
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
         NotificationManagerCompat.from(this).notify(
             TimerNotificationHelper.NOTIFICATION_ID,
             TimerNotificationHelper.build(this, secondsRemaining, isPaused)
