@@ -44,9 +44,6 @@ object DataBackupUtil {
                 return null
             }
 
-            // Flush WAL contents into the main database file before taking the
-            // snapshot. Do not wrap the file copy in a SQL transaction: the
-            // database file is the snapshot target, not the transaction target.
             db.openHelper.writableDatabase
                 .query("PRAGMA wal_checkpoint(TRUNCATE)")
                 .use { }
@@ -252,7 +249,6 @@ object DataBackupUtil {
         context: Context,
         uri: Uri
     ): Boolean {
-        return try {
         val stagingRoot = File(
             context.cacheDir,
             "restore_${UUID.randomUUID()}"
@@ -299,6 +295,7 @@ object DataBackupUtil {
             PHOTOS_ENTRY_PREFIX
         )
 
+        return try {
             stagingRoot.mkdirs()
             stagingPhotos.mkdirs()
 
@@ -401,13 +398,8 @@ object DataBackupUtil {
 
             validateSQLiteDatabase(stagedDb)
 
-            // The restore happens only after every archive entry has been
-            // extracted and validated.
             RedForgeDatabase.closeInstance()
 
-            // The Room instance is closed before any SQLite file is removed.
-            // This is important because the app intentionally restarts after
-            // a successful restore so its repositories pick up the new DB.
             rollbackRoot.mkdirs()
 
             if (currentDb.isFile) {
@@ -433,7 +425,6 @@ object DataBackupUtil {
                 )
             }
 
-            // Remove SQLite sidecars before replacing the database.
             File(currentDb.path + "-wal").delete()
             File(currentDb.path + "-shm").delete()
 
@@ -479,8 +470,6 @@ object DataBackupUtil {
 
             true
         } catch (_: Exception) {
-            // Best-effort rollback. The app will remain usable after a failed
-            // restore because the original database/settings/photos are put back.
             try {
                 if (rollbackDb.isFile) {
                     File(currentDb.path + "-wal").delete()
