@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -35,4 +35,9 @@ jobs:
         run: ./gradlew test --stacktrace --console=plain
 
       - name: Lint
-        run: ./gradlew lint --stacktrace --console=plain
+        run: |
+          ./gradlew lint --stacktrace --console=plain || {
+            echo '===== FULL LINT REPORT ====='
+            find app/build -type f -name 'lint-results*.txt' -print -exec cat {} \;
+            exit 1
+          }
